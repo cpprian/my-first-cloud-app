@@ -4,7 +4,7 @@ var app = express();
 const port = 6000;
 
 app.get('/', (req, res) => {
-    res.send('Hello World!');
+    res.send('Hello World! My first google cloud app!');
 });
 
 app.listen(port, () => {
