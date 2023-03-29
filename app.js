@@ -1,7 +1,7 @@
 var express = require('express');
 var app = express();
 
-const port = 6000;
+const port = 8080;
 
 app.get('/', (req, res) => {
     res.send('Hello World! My first google cloud app!');
