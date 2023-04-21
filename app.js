@@ -3,6 +3,21 @@ const express = require('express')
 const OAuth2Data = require('./google_key.json')
 const app = express()
 
+const { Pool } = require('pg');
+
+const pool = new Pool({
+    user: 'postgres',
+    host: '34.68.83.123',
+    database: 'my-first-app-instance',
+    password: '',
+    port: 5432,
+});
+
+pool.query('SELECT NOW()', (err, res) => {
+    console.log(err, res)
+    pool.end()
+});
+
 const port = 8080;
 
 const CLIENT_ID = OAuth2Data.web.client_id;
@@ -56,5 +71,3 @@ app.get('/auth/google/callback', function (req, res) {
 app.listen(port, () => {
     console.log(`Example app listening on port ${port}!`);
 });
-
-const create
