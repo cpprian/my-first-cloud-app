@@ -1,24 +1,41 @@
 const { google } = require('googleapis');
 const express = require('express')
 const OAuth2Data = require('./google_key.json')
+const cloudData = require('./my-first-app.json')
 const app = express()
-
-const { Pool } = require('pg');
-
-const pool = new Pool({
-    user: 'postgres',
-    host: '34.68.83.123',
-    database: 'my-first-app-instance',
-    password: '',
-    port: 5432,
-});
-
-pool.query('SELECT NOW()', (err, res) => {
-    console.log(err, res)
-    pool.end()
-});
-
 const port = 8080;
+
+const {Client} = require('@google-cloud/sql');
+
+const client = new Client({
+  projectId: cloudData.project_id,
+  credentials: {
+    client_email: cloudData.client_email,
+    private_key: cloudData.private_key,
+  },
+});
+const instanceConnectionName ='my-first-app-382113:us-central1:my-first-app-instance';
+const databaseName = 'my-first-app-instance';
+
+async function connect() {
+  await client.connect({
+    connectionName: instanceConnectionName,
+    database: databaseName,
+  });
+
+  console.log(`Connected to database ${databaseName}`);
+}
+
+connect();
+
+const query = 'SELECT * FROM guestbook;';
+async function executeQuery() {
+    const [results] = await client.query(query);
+
+    console.log('Query results:', results);
+}
+
+executeQuery();
 
 const CLIENT_ID = OAuth2Data.web.client_id;
 const CLIENT_SECRET = OAuth2Data.web.client_secret; 
@@ -37,15 +54,17 @@ app.get('/', (req, res) => {
         res.redirect(url);
     } else {
         var oauth2 = google.oauth2({ auth: oAuth2Client, version: 'v2' });
-        oauth2.userinfo.me.get(function (err, response) {
+        oauth2.userinfo.get(function (err, response) {
             if (err) {
                 console.log('Error occured')
                 console.log(err);
             } else {
                 console.log(response.data);
-                res.send(response.data);
+                res.header("Content-Type", 'application/json');
+                res.write(JSON.stringify(response.data));
             }
-            res.send('Logged in');
+
+            res.end();
         });
     }
 })
