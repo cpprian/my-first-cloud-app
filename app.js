@@ -1,41 +1,64 @@
-const { google } = require('googleapis');
 const express = require('express')
 const OAuth2Data = require('./google_key.json')
-const cloudData = require('./my-first-app.json')
+const cloudData = require('./my-first-app-382113-965b7d08d5ee.json')
+
 const app = express()
+app.set('view engine', 'ejs');
+
 const port = 8080;
 
-const {Client} = require('@google-cloud/sql');
+const {google} = require('googleapis');
+const sqladmin = google.sqladmin('v1beta4');
 
-const client = new Client({
-  projectId: cloudData.project_id,
-  credentials: {
-    client_email: cloudData.client_email,
-    private_key: cloudData.private_key,
-  },
+const auth = new google.auth.GoogleAuth({
+  keyFile: 'my-first-app-382113-965b7d08d5ee.json',
+  scopes: ['https://www.googleapis.com/auth/sqlservice.admin'],
 });
-const instanceConnectionName ='my-first-app-382113:us-central1:my-first-app-instance';
-const databaseName = 'my-first-app-instance';
 
-async function connect() {
-  await client.connect({
-    connectionName: instanceConnectionName,
-    database: databaseName,
-  });
-
-  console.log(`Connected to database ${databaseName}`);
+async function getInstances(request) {
+  try {
+    console.log('Getting instances...');
+    const response = await sqladmin.instances.get(request);
+    console.log('Result ', response.data);
+    return response;
+  } catch (err) {
+    console.log('Error ', err);
+    return null;
+  }
 }
 
-connect();
+async function main() {
+    const authClient = await auth.getClient();
 
-const query = 'SELECT * FROM guestbook;';
-async function executeQuery() {
-    const [results] = await client.query(query);
+    const project = cloudData.project_id;
+    const instance = 'my-first-app-instance';
+    const request = {
+      project,
+      instance,
+      auth: authClient,
+    };
 
-    console.log('Query results:', results);
+    const response = await getInstances(request);
+
+    const ipAddresses = response.data.ipAddresses;
+    const ipAddress = ipAddresses[0].ipAddress;
+    const username = 'postgres';
+    const password = '1234';
+    const database = 'guestbook';
+    
+    const knex = require('knex')({
+      client: 'pg',
+      connection: {
+        host: ipAddress,
+        user: username,
+        password: password,
+        database: database,
+      },
+    });
+    
+    const result = knex.raw('SELECT * FROM uzytkownicy');
+    console.log(result.rows);
 }
-
-executeQuery();
 
 const CLIENT_ID = OAuth2Data.web.client_id;
 const CLIENT_SECRET = OAuth2Data.web.client_secret; 
@@ -58,13 +81,13 @@ app.get('/', (req, res) => {
             if (err) {
                 console.log('Error occured')
                 console.log(err);
+                return;
             } else {
                 console.log(response.data);
-                res.header("Content-Type", 'application/json');
-                res.write(JSON.stringify(response.data));
+                const data = { name: response.data.name };
+                res.render('data', { data });
             }
-
-            res.end();
+            main();
         });
     }
 })
