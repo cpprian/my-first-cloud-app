@@ -1,6 +1,7 @@
 const express = require('express')
+const knex = require('knex');
 const OAuth2Data = require('./google_key.json')
-const cloudData = require('./my-first-app-382113-965b7d08d5ee.json')
+const cloudData = require('./my-first-app-382113-49706002c9b2.json')
 
 const app = express()
 app.set('view engine', 'ejs');
@@ -11,7 +12,7 @@ const {google} = require('googleapis');
 const sqladmin = google.sqladmin('v1beta4');
 
 const auth = new google.auth.GoogleAuth({
-  keyFile: 'my-first-app-382113-965b7d08d5ee.json',
+  keyFile: 'my-first-app-382113-49706002c9b2.json',
   scopes: ['https://www.googleapis.com/auth/sqlservice.admin'],
 });
 
@@ -28,14 +29,13 @@ async function getInstances(request) {
 }
 
 async function main() {
-    const authClient = await auth.getClient();
 
     const project = cloudData.project_id;
     const instance = 'my-first-app-instance';
     const request = {
       project,
       instance,
-      auth: authClient,
+      auth: auth,
     };
 
     const response = await getInstances(request);
@@ -44,9 +44,9 @@ async function main() {
     const ipAddress = ipAddresses[0].ipAddress;
     const username = 'postgres';
     const password = '1234';
-    const database = 'guestbook';
+    const database = 'public';
     
-    const knex = require('knex')({
+    const db = knex({
       client: 'pg',
       connection: {
         host: ipAddress,
@@ -56,8 +56,9 @@ async function main() {
       },
     });
     
-    const result = knex.raw('SELECT * FROM uzytkownicy');
-    console.log(result.rows);
+    const rows = await db.raw('SELECT * FROM uzytkownicy').then(res => res.rows);
+    console.log("Rows:", rows);
+    return rows;
 }
 
 const CLIENT_ID = OAuth2Data.web.client_id;
@@ -85,9 +86,9 @@ app.get('/', (req, res) => {
             } else {
                 console.log(response.data);
                 const data = { name: response.data.name };
-                res.render('data', { data });
+                const result = { hello: main() };
+                res.render('data', { data, result });
             }
-            main();
         });
     }
 })
